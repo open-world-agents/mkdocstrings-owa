@@ -31,7 +31,19 @@ Context:
       {% set show_full_path = config.show_object_full_path %}
     {% endif %}
 
-    {% set attribute_name = attribute.path if show_full_path else attribute.name %}
+    {#- Override attribute_name for OWA components -#}
+    {% if owa_full_component_name is defined %}
+      {% if show_full_path %}
+        {% set attribute_name = owa_full_component_name %}
+        {% set toc_attribute_name = owa_full_component_name %}
+      {% else %}
+        {% set attribute_name = owa_component_name %}
+        {% set toc_attribute_name = owa_component_name %}
+      {% endif %}
+    {% else %}
+      {% set attribute_name = attribute.path if show_full_path else attribute.name %}
+      {% set toc_attribute_name = attribute.name %}
+    {% endif %}
 
     {% if not root or config.show_root_heading %}
       {% filter heading(
@@ -39,7 +51,7 @@ Context:
           role="data" if attribute.parent.kind.value == "module" else "attr",
           id=html_id,
           class="doc doc-heading",
-          toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else attribute.name),
+          toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else toc_attribute_name),
         ) %}
 
         {% block heading scoped %}
@@ -91,7 +103,7 @@ Context:
         {% filter heading(heading_level,
             role="data" if attribute.parent.kind.value == "module" else "attr",
             id=html_id,
-            toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else attribute_name),
+            toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else toc_attribute_name),
             hidden=True,
           ) %}
         {% endfilter %}

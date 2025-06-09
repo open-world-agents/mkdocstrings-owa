@@ -30,7 +30,19 @@ Context:
       {% set show_full_path = config.show_object_full_path %}
     {% endif %}
 
-    {% set class_name = class.path if show_full_path else class.name %}
+    {#- Override class_name for OWA components -#}
+    {% if owa_full_component_name is defined %}
+      {% if show_full_path %}
+        {% set class_name = owa_full_component_name %}
+        {% set toc_class_name = owa_full_component_name %}
+      {% else %}
+        {% set class_name = owa_component_name %}
+        {% set toc_class_name = owa_component_name %}
+      {% endif %}
+    {% else %}
+      {% set class_name = class.path if show_full_path else class.name %}
+      {% set toc_class_name = class.name %}
+    {% endif %}
 
     {% if not root or config.show_root_heading %}
       {% filter heading(
@@ -38,7 +50,7 @@ Context:
           role="class",
           id=html_id,
           class="doc doc-heading",
-          toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else class.name),
+          toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else toc_class_name),
         ) %}
 
         {% block heading scoped %}
@@ -110,7 +122,7 @@ Context:
         {% filter heading(heading_level,
             role="class",
             id=html_id,
-            toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else class.name),
+            toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else toc_class_name),
             hidden=True,
           ) %}
         {% endfilter %}

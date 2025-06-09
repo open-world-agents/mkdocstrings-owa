@@ -34,7 +34,19 @@ Context:
       {% set show_full_path = config.show_object_full_path %}
     {% endif %}
 
-    {% set function_name = function.path if show_full_path else function.name %}
+    {#- Override function_name for OWA components -#}
+    {% if owa_full_component_name is defined %}
+      {% if show_full_path %}
+        {% set function_name = owa_full_component_name %}
+        {% set toc_function_name = owa_full_component_name %}
+      {% else %}
+        {% set function_name = owa_component_name %}
+        {% set toc_function_name = owa_component_name %}
+      {% endif %}
+    {% else %}
+      {% set function_name = function.path if show_full_path else function.name %}
+      {% set toc_function_name = function.name %}
+    {% endif %}
     {#- Brief or full function name depending on configuration. -#}
     {% set symbol_type = "method" if function.parent.is_class else "function" %}
     {#- Symbol type: method when parent is a class, function otherwise. -#}
@@ -45,7 +57,7 @@ Context:
           role="function",
           id=html_id,
           class="doc doc-heading",
-          toc_label=(('<code class="doc-symbol doc-symbol-toc doc-symbol-' + symbol_type + '"></code>&nbsp;')|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else function.name),
+          toc_label=(('<code class="doc-symbol doc-symbol-toc doc-symbol-' + symbol_type + '"></code>&nbsp;')|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else toc_function_name),
         ) %}
 
         {% block heading scoped %}
@@ -108,7 +120,7 @@ Context:
             heading_level,
             role="function",
             id=html_id,
-            toc_label=(('<code class="doc-symbol doc-symbol-toc doc-symbol-' + symbol_type + '"></code>&nbsp;')|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else function.name),
+            toc_label=(('<code class="doc-symbol doc-symbol-toc doc-symbol-' + symbol_type + '"></code>&nbsp;')|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else toc_function_name),
             hidden=True,
           ) %}
         {% endfilter %}
