@@ -3,7 +3,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [project]
-name = "mkdocstrings-python"
+name = "mkdocstrings-owa"
 description = "A Python handler for mkdocstrings."
 authors = [{name = "Timothée Mazzucotelli", email = "dev@pawamoy.fr"}]
 license = "ISC"
