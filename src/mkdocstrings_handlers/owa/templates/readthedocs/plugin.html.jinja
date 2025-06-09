@@ -127,6 +127,16 @@ Context:
               {% filter heading(heading_level, id=html_id ~ "-callables") %}
                 Callables
               {% endfilter %}
+
+              <div class="doc doc-contents">
+                <p><strong>Usage:</strong> To use callable components, import <code>CALLABLES</code> from <code>owa.core</code> and access them by their component name:</p>
+                <pre><code>from owa.core import CALLABLES
+
+# Access a callable component (replace 'component_name' with actual name)
+callable_func = CALLABLES["{{ plugin.namespace }}/component_name"]
+result = callable_func(your_arguments)</code></pre>
+              </div>
+
               {% set heading_level = heading_level + 1 %}
 
               {% for component_name, import_path in plugin.components.callables.items() %}
@@ -181,6 +191,26 @@ Context:
               {% filter heading(heading_level, id=html_id ~ "-listeners") %}
                 Listeners
               {% endfilter %}
+
+              <div class="doc doc-contents">
+                <p><strong>Usage:</strong> To use listener components, import <code>LISTENERS</code> from <code>owa.core</code> and call the <code>configure()</code> method with a <code>callback</code> function:</p>
+                <pre><code>from owa.core import LISTENERS
+
+# Define your callback function
+def my_callback(event_data):
+    print(f"Event received: {event_data}")
+
+# Configure a listener component (replace 'component_name' with actual name)
+listener = LISTENERS["{{ plugin.namespace }}/component_name"]
+listener.configure(callback=my_callback)
+
+# Use the listener in a context manager
+with listener.session as active_listener:
+    # The listener is now running and will call my_callback when events occur
+    pass  # Your main code here</code></pre>
+                <p><em>Note: The <code>callback</code> argument is required. The <code>on_configure()</code> method shown in the documentation is an internal method called by <code>configure()</code>.</em></p>
+              </div>
+
               {% set heading_level = heading_level + 1 %}
 
               {% for component_name, import_path in plugin.components.listeners.items() %}
@@ -235,6 +265,22 @@ Context:
               {% filter heading(heading_level, id=html_id ~ "-runnables") %}
                 Runnables
               {% endfilter %}
+
+              <div class="doc doc-contents">
+                <p><strong>Usage:</strong> To use runnable components, import <code>RUNNABLES</code> from <code>owa.core</code> and call the <code>configure()</code> method (not <code>on_configure()</code>):</p>
+                <pre><code>from owa.core import RUNNABLES
+
+# Configure a runnable component (replace 'component_name' with actual name)
+runnable = RUNNABLES["{{ plugin.namespace }}/component_name"]
+runnable.configure(your_configuration_dict)
+
+# Use the runnable in a context manager
+with runnable.session as active_runnable:
+    # The runnable is now running in the background
+    pass  # Your main code here</code></pre>
+                <p><em>Note: The <code>on_configure()</code> method shown in the documentation is an internal method called by <code>configure()</code>.</em></p>
+              </div>
+
               {% set heading_level = heading_level + 1 %}
 
               {% for component_name, import_path in plugin.components.runnables.items() %}
