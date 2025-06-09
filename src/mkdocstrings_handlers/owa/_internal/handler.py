@@ -273,9 +273,6 @@ class OWAHandler(BaseHandler):
                 plugin_spec = self._plugin_discovery.discovered_plugins[identifier]
                 wrapped_plugin = PluginSpecWrapper(plugin_spec, identifier)
                 return wrapped_plugin
-        
-            # Fall back to Python module handling
-            identifier = "owa.env." + identifier
 
         # Fall back to Python module handling
         module_name = identifier.split(".", 1)[0]
