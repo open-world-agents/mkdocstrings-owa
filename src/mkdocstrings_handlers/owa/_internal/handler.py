@@ -1,4 +1,4 @@
-# This module implements a handler for the Python language.
+# This module implements a handler for the OWA (Open World Agents) language with Python support.
 
 from __future__ import annotations
 
@@ -23,9 +23,19 @@ from griffe import (
 )
 from mkdocs.exceptions import PluginError
 from mkdocstrings import BaseHandler, CollectionError, CollectorItem, HandlerOptions, Inventory, get_logger
+from mkdocstrings_handlers.owa._internal import rendering
+from mkdocstrings_handlers.owa._internal.config import PythonConfig, PythonOptions
 
-from mkdocstrings_handlers.python._internal import rendering
-from mkdocstrings_handlers.python._internal.config import PythonConfig, PythonOptions
+# OWA-specific imports
+try:
+    from owa.core import get_plugin_discovery
+    from owa.core.plugin_spec import PluginSpec
+
+    OWA_AVAILABLE = True
+except ImportError:
+    OWA_AVAILABLE = False
+    get_plugin_discovery = None
+    PluginSpec = None
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, MutableMapping, Sequence
@@ -54,6 +64,33 @@ _logger = get_logger(__name__)
 patch_loggers(get_logger)
 
 
+class PluginSpecWrapper:
+    """Wrapper for PluginSpec to add template compatibility properties."""
+
+    def __init__(self, plugin_spec: "PluginSpec", plugin_name: str):
+        self._plugin_spec = plugin_spec
+        self._plugin_name = plugin_name
+
+    def __getattr__(self, name: str):
+        """Delegate attribute access to the wrapped PluginSpec."""
+        return getattr(self._plugin_spec, name)
+
+    @property
+    def kind(self):
+        """Return a kind object for template compatibility."""
+        return type("Kind", (), {"value": "plugin"})()
+
+    @property
+    def path(self):
+        """Return the plugin namespace as path for compatibility."""
+        return self.namespace
+
+    @property
+    def name(self):
+        """Return the plugin name for template compatibility."""
+        return self._plugin_name
+
+
 # YORE: Bump 2: Remove block.
 def _warn_extra_options(names: Sequence[str]) -> None:
     warn(
@@ -65,13 +102,13 @@ def _warn_extra_options(names: Sequence[str]) -> None:
     )
 
 
-class PythonHandler(BaseHandler):
-    """The Python handler class."""
+class OWAHandler(BaseHandler):
+    """The OWA handler class with Python support."""
 
-    name: ClassVar[str] = "python"
+    name: ClassVar[str] = "owa"
     """The handler's name."""
 
-    domain: ClassVar[str] = "py"
+    domain: ClassVar[str] = "owa"
     """The cross-documentation domain/language for this handler."""
 
     enable_inventory: ClassVar[bool] = True
@@ -144,6 +181,15 @@ class PythonHandler(BaseHandler):
         self._modules_collection: ModulesCollection = ModulesCollection()
         self._lines_collection: LinesCollection = LinesCollection()
 
+        # Initialize OWA plugin discovery
+        if OWA_AVAILABLE:
+            self._plugin_discovery = get_plugin_discovery()
+            if not self._plugin_discovery.discovered_plugins:
+                _logger.info("No OWA plugins discovered. Running plugin discovery...")
+                self._plugin_discovery.discover_plugins()
+        else:
+            self._plugin_discovery = None
+
     def get_inventory_urls(self) -> list[tuple[str, dict[str, Any]]]:
         """Return the URLs of the inventory files to download."""
         return [(inv.url, inv._config) for inv in self.config.inventories]
@@ -209,12 +255,26 @@ class PythonHandler(BaseHandler):
         """Collect the documentation for the given identifier.
 
         Parameters:
-            identifier: The identifier of the object to collect.
+            identifier: The identifier of the object to collect (Python module or OWA plugin).
             options: The options to use for the collection.
 
         Returns:
             The collected item.
         """
+        # Check if this is an OWA plugin first
+        if self._plugin_discovery and OWA_AVAILABLE:
+            discovered_plugins, failed_plugins = self._plugin_discovery.get_plugin_info(identifier)
+
+            if identifier in failed_plugins:
+                raise CollectionError(f"OWA Plugin '{identifier}' failed to load: {failed_plugins[identifier]}")
+
+            if identifier in discovered_plugins:
+                # This is an OWA plugin - get the PluginSpec and wrap it for template compatibility
+                plugin_spec = self._plugin_discovery.discovered_plugins[identifier]
+                wrapped_plugin = PluginSpecWrapper(plugin_spec, identifier)
+                return wrapped_plugin
+
+        # Fall back to Python module handling
         module_name = identifier.split(".", 1)[0]
         unknown_module = module_name not in self._modules_collection
         reapply = True
@@ -282,12 +342,23 @@ class PythonHandler(BaseHandler):
         """Render the collected data.
 
         Parameters:
-            data: The collected data.
+            data: The collected data (Python object or OWA plugin).
             options: The options to use for rendering.
 
         Returns:
             The rendered data (HTML).
         """
+        # Check if this is an OWA plugin
+        if OWA_AVAILABLE and isinstance(data, PluginSpecWrapper):
+            template = self.env.get_template("plugin.html.jinja")
+            return template.render(
+                plugin=data,
+                plugin_name=data.name,
+                config=options,
+                heading_level=options.heading_level,
+            )
+
+        # Fall back to Python object rendering
         template_name = rendering.do_get_template(self.env, data)
         template = self.env.get_template(template_name)
 
@@ -395,21 +466,21 @@ def get_handler(
     handler_config: MutableMapping[str, Any],
     tool_config: MkDocsConfig,
     **kwargs: Any,
-) -> PythonHandler:
-    """Return an instance of `PythonHandler`.
+) -> OWAHandler:
+    """Return an instance of `OWAHandler`.
 
     Parameters:
         handler_config: The handler configuration.
         tool_config: The tool (SSG) configuration.
 
     Returns:
-        An instance of `PythonHandler`.
+        An instance of `OWAHandler`.
     """
     base_dir = Path(tool_config.config_file_path or "./mkdocs.yml").parent
     if "inventories" not in handler_config and "import" in handler_config:
-        warn("The 'import' key is renamed 'inventories' for the Python handler", FutureWarning, stacklevel=1)
+        warn("The 'import' key is renamed 'inventories' for the OWA handler", FutureWarning, stacklevel=1)
         handler_config["inventories"] = handler_config.pop("import", [])
-    return PythonHandler(
+    return OWAHandler(
         config=PythonConfig.from_data(**handler_config),
         base_dir=base_dir,
         **kwargs,

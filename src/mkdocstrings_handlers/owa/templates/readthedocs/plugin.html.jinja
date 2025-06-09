@@ -1,0 +1,73 @@
+{#- Template for rendering OWA plugin documentation (ReadTheDocs theme) -#}
+
+{%- set heading_level = heading_level or 2 -%}
+
+{#- Plugin header -#}
+<div class="owa-plugin" data-plugin="{{ plugin_name }}">
+
+{#- Plugin title and metadata -#}
+<h{{ heading_level }} class="owa-plugin-title">{{ plugin.namespace }}</h{{ heading_level }}>
+
+{%- if plugin.description %}
+<p class="owa-plugin-description">{{ plugin.description }}</p>
+{%- endif %}
+
+{%- if plugin.version or plugin.author %}
+<div class="owa-plugin-metadata">
+{%- if plugin.version %}
+  <span class="owa-plugin-version"><strong>Version:</strong> {{ plugin.version }}</span>
+{%- endif %}
+{%- if plugin.author %}
+  <span class="owa-plugin-author"><strong>Author:</strong> {{ plugin.author }}</span>
+{%- endif %}
+</div>
+{%- endif %}
+
+{#- Components section -#}
+{%- if plugin.components %}
+
+{#- Callables -#}
+{%- if plugin.components.get("callables") %}
+<h{{ heading_level + 1 }} class="owa-component-type-title">Callables</h{{ heading_level + 1 }}>
+
+<div class="owa-components owa-callables">
+{%- for name, import_path in plugin.components.callables.items() %}
+  <div class="owa-component" data-component="{{ name }}">
+    <h{{ heading_level + 2 }} class="owa-component-name">{{ name }}</h{{ heading_level + 2 }}>
+    <p class="owa-component-import"><code>{{ import_path }}</code></p>
+  </div>
+{%- endfor %}
+</div>
+{%- endif %}
+
+{#- Listeners -#}
+{%- if plugin.components.get("listeners") %}
+<h{{ heading_level + 1 }} class="owa-component-type-title">Listeners</h{{ heading_level + 1 }}>
+
+<div class="owa-components owa-listeners">
+{%- for name, import_path in plugin.components.listeners.items() %}
+  <div class="owa-component" data-component="{{ name }}">
+    <h{{ heading_level + 2 }} class="owa-component-name">{{ name }}</h{{ heading_level + 2 }}>
+    <p class="owa-component-import"><code>{{ import_path }}</code></p>
+  </div>
+{%- endfor %}
+</div>
+{%- endif %}
+
+{#- Runnables -#}
+{%- if plugin.components.get("runnables") %}
+<h{{ heading_level + 1 }} class="owa-component-type-title">Runnables</h{{ heading_level + 1 }}>
+
+<div class="owa-components owa-runnables">
+{%- for name, import_path in plugin.components.runnables.items() %}
+  <div class="owa-component" data-component="{{ name }}">
+    <h{{ heading_level + 2 }} class="owa-component-name">{{ name }}</h{{ heading_level + 2 }}>
+    <p class="owa-component-import"><code>{{ import_path }}</code></p>
+  </div>
+{%- endfor %}
+</div>
+{%- endif %}
+
+{%- endif %}
+
+</div>

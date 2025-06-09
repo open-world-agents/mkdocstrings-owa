@@ -1,6 +1,6 @@
-"""Python handler for mkdocstrings."""
+"""OWA handler for mkdocstrings with Python support."""
 
-from mkdocstrings_handlers.python._internal.config import (
+from mkdocstrings_handlers.owa._internal.config import (
     AutoStyleOptions,
     GoogleStyleOptions,
     Inventory,
@@ -13,8 +13,8 @@ from mkdocstrings_handlers.python._internal.config import (
     SphinxStyleOptions,
     SummaryOption,
 )
-from mkdocstrings_handlers.python._internal.handler import PythonHandler, get_handler
-from mkdocstrings_handlers.python._internal.rendering import (
+from mkdocstrings_handlers.owa._internal.handler import OWAHandler, PluginSpecWrapper, get_handler
+from mkdocstrings_handlers.owa._internal.rendering import (
     AutorefsHook,
     Order,
     Tree,
@@ -42,9 +42,10 @@ __all__ = [
     "Inventory",
     "NumpyStyleOptions",
     "Order",
+    "OWAHandler",
     "PerStyleOptions",
+    "PluginSpecWrapper",
     "PythonConfig",
-    "PythonHandler",
     "PythonInputConfig",
     "PythonInputOptions",
     "PythonOptions",
