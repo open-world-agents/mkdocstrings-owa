@@ -30,8 +30,9 @@ Context:
       {% set show_full_path = config.show_object_full_path %}
     {% endif %}
 
-    {#- Override module_name for OWA components -#}
-    {% if owa_full_component_name is defined %}
+    {#- Override module_name for OWA components (only for top-level component, not its members) -#}
+    {% if owa_full_component_name is defined and not owa_component_name_used %}
+      {% set owa_component_name_used = true %}
       {% if show_full_path %}
         {% set module_name = owa_full_component_name %}
         {% set toc_module_name = owa_full_component_name %}

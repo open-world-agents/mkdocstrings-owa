@@ -143,6 +143,7 @@ Context:
                   {% set owa_plugin_name = plugin.namespace %}
                   {% set owa_component_name = component_name %}
                   {% set owa_full_component_name = full_component_name %}
+                  {% set owa_component_name_used = false %}
                   {% if python_object.kind.value == "function" %}
                     {% set function = python_object %}
                     {% include "function.html.jinja" with context %}
@@ -196,6 +197,7 @@ Context:
                   {% set owa_plugin_name = plugin.namespace %}
                   {% set owa_component_name = component_name %}
                   {% set owa_full_component_name = full_component_name %}
+                  {% set owa_component_name_used = false %}
                   {% if python_object.kind.value == "function" %}
                     {% set function = python_object %}
                     {% include "function.html.jinja" with context %}
@@ -249,6 +251,7 @@ Context:
                   {% set owa_plugin_name = plugin.namespace %}
                   {% set owa_component_name = component_name %}
                   {% set owa_full_component_name = full_component_name %}
+                  {% set owa_component_name_used = false %}
                   {% if python_object.kind.value == "function" %}
                     {% set function = python_object %}
                     {% include "function.html.jinja" with context %}
