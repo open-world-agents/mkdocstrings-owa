@@ -375,6 +375,62 @@ class OWAHandler(BaseHandler):
             },
         )
 
+    def collect_python_object(self, identifier: str) -> CollectorItem | None:
+        """Collect a Python object for rendering within plugin templates.
+
+        Parameters:
+            identifier: The Python object identifier (e.g., 'owa.env.desktop.screen.callables.capture_screen').
+
+        Returns:
+            The collected Python object, or None if collection fails.
+        """
+        try:
+            # Use the Python collection logic (skip OWA plugin check)
+            module_name = identifier.split(".", 1)[0]
+            unknown_module = module_name not in self._modules_collection
+
+            if unknown_module:
+                # Use the same loader approach as the main collect method
+                options = self.get_options({})
+                parser_name = options.docstring_style
+                parser = parser_name and Parser(parser_name)
+                parser_options = options.docstring_options and asdict(options.docstring_options)
+
+                extensions = self.normalize_extension_paths(options.extensions)
+                loader = GriffeLoader(
+                    extensions=load_extensions(*extensions),
+                    search_paths=self._paths,
+                    docstring_parser=parser,
+                    docstring_options=parser_options,  # type: ignore[arg-type]
+                    modules_collection=self._modules_collection,
+                    lines_collection=self._lines_collection,
+                    allow_inspection=options.allow_inspection,
+                    force_inspection=options.force_inspection,
+                )
+                try:
+                    loader.load(
+                        module_name,
+                        try_relative_path=False,
+                        find_stubs_package=options.find_stubs_package,
+                    )
+                except ImportError:
+                    return None
+
+                # Resolve aliases
+                loader.resolve_aliases(
+                    implicit=False,
+                    external=self.config.load_external_modules,
+                )
+
+            # Get the object from the collection
+            try:
+                return self._modules_collection[identifier]
+            except (KeyError, AliasResolutionError):
+                return None
+
+        except Exception:
+            return None
+
     def update_env(self, config: Any) -> None:  # noqa: ARG002
         """Update the Jinja environment with custom filters and tests.
 
@@ -400,6 +456,7 @@ class OWAHandler(BaseHandler):
         self.env.filters["as_modules_section"] = rendering.do_as_modules_section
         self.env.filters["backlink_tree"] = rendering.do_backlink_tree
         self.env.globals["AutorefsHook"] = rendering.AutorefsHook
+        self.env.globals["collect_python_object"] = self.collect_python_object
         self.env.tests["existing_template"] = lambda template_name: template_name in self.env.list_templates()
 
     def get_aliases(self, identifier: str) -> tuple[str, ...]:
