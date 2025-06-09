@@ -128,15 +128,23 @@ Context:
                 Callables
               {% endfilter %}
 
-              {% for name, import_path in plugin.components.callables.items() %}
+              {% for component_name, import_path in plugin.components.callables.items() %}
                 {#- Parse import path: module_path:object_name -#}
                 {% set module_path, object_name = import_path.split(':') %}
                 {% set full_path = module_path ~ '.' ~ object_name %}
+                {% set full_component_name = plugin.namespace ~ "/" ~ component_name %}
+
+                {#- Show component name heading -#}
+                {% filter heading(heading_level + 1, id=html_id ~ "-callables-" ~ component_name.replace('.', '-')) %}
+                  <code>{{ full_component_name }}</code>
+                {% endfilter %}
 
                 {#- Try to collect and render the actual Python object -#}
                 {% set python_object = collect_python_object(full_path) %}
                 {% if python_object %}
                   {#- Render using existing Python templates with correct variable names -#}
+                  {% set root = False %}
+                  {% set heading_level = heading_level + 1 %}
                   {% if python_object.kind.value == "function" %}
                     {% set function = python_object %}
                     {% include "function.html.jinja" with context %}
@@ -151,16 +159,11 @@ Context:
                     {% include "attribute.html.jinja" with context %}
                   {% else %}
                     {#- Fallback for unknown types -#}
-                    {% filter heading(heading_level + 1, id=html_id ~ "-callables-" ~ name) %}
-                      <code>{{ name }}</code> ({{ python_object.kind.value }})
-                    {% endfilter %}
+                    <p><strong>Type:</strong> {{ python_object.kind.value }}</p>
                     <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                   {% endif %}
                 {% else %}
                   {#- Fallback to simple display if object can't be collected -#}
-                  {% filter heading(heading_level + 1, id=html_id ~ "-callables-" ~ name) %}
-                    <code>{{ name }}</code>
-                  {% endfilter %}
                   <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                 {% endif %}
               {% endfor %}
@@ -172,15 +175,23 @@ Context:
                 Listeners
               {% endfilter %}
 
-              {% for name, import_path in plugin.components.listeners.items() %}
+              {% for component_name, import_path in plugin.components.listeners.items() %}
                 {#- Parse import path: module_path:object_name -#}
                 {% set module_path, object_name = import_path.split(':') %}
                 {% set full_path = module_path ~ '.' ~ object_name %}
+                {% set full_component_name = plugin.namespace ~ "/" ~ component_name %}
+
+                {#- Show component name heading -#}
+                {% filter heading(heading_level + 1, id=html_id ~ "-listeners-" ~ component_name.replace('.', '-')) %}
+                  <code>{{ full_component_name }}</code>
+                {% endfilter %}
 
                 {#- Try to collect and render the actual Python object -#}
                 {% set python_object = collect_python_object(full_path) %}
                 {% if python_object %}
                   {#- Render using existing Python templates with correct variable names -#}
+                  {% set root = False %}
+                  {% set heading_level = heading_level + 1 %}
                   {% if python_object.kind.value == "function" %}
                     {% set function = python_object %}
                     {% include "function.html.jinja" with context %}
@@ -195,16 +206,11 @@ Context:
                     {% include "attribute.html.jinja" with context %}
                   {% else %}
                     {#- Fallback for unknown types -#}
-                    {% filter heading(heading_level + 1, id=html_id ~ "-listeners-" ~ name) %}
-                      <code>{{ name }}</code> ({{ python_object.kind.value }})
-                    {% endfilter %}
+                    <p><strong>Type:</strong> {{ python_object.kind.value }}</p>
                     <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                   {% endif %}
                 {% else %}
                   {#- Fallback to simple display if object can't be collected -#}
-                  {% filter heading(heading_level + 1, id=html_id ~ "-listeners-" ~ name) %}
-                    <code>{{ name }}</code>
-                  {% endfilter %}
                   <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                 {% endif %}
               {% endfor %}
@@ -216,15 +222,23 @@ Context:
                 Runnables
               {% endfilter %}
 
-              {% for name, import_path in plugin.components.runnables.items() %}
+              {% for component_name, import_path in plugin.components.runnables.items() %}
                 {#- Parse import path: module_path:object_name -#}
                 {% set module_path, object_name = import_path.split(':') %}
                 {% set full_path = module_path ~ '.' ~ object_name %}
+                {% set full_component_name = plugin.namespace ~ "/" ~ component_name %}
+
+                {#- Show component name heading -#}
+                {% filter heading(heading_level + 1, id=html_id ~ "-runnables-" ~ component_name.replace('.', '-')) %}
+                  <code>{{ full_component_name }}</code>
+                {% endfilter %}
 
                 {#- Try to collect and render the actual Python object -#}
                 {% set python_object = collect_python_object(full_path) %}
                 {% if python_object %}
                   {#- Render using existing Python templates with correct variable names -#}
+                  {% set root = False %}
+                  {% set heading_level = heading_level + 1 %}
                   {% if python_object.kind.value == "function" %}
                     {% set function = python_object %}
                     {% include "function.html.jinja" with context %}
@@ -239,16 +253,11 @@ Context:
                     {% include "attribute.html.jinja" with context %}
                   {% else %}
                     {#- Fallback for unknown types -#}
-                    {% filter heading(heading_level + 1, id=html_id ~ "-runnables-" ~ name) %}
-                      <code>{{ name }}</code> ({{ python_object.kind.value }})
-                    {% endfilter %}
+                    <p><strong>Type:</strong> {{ python_object.kind.value }}</p>
                     <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                   {% endif %}
                 {% else %}
                   {#- Fallback to simple display if object can't be collected -#}
-                  {% filter heading(heading_level + 1, id=html_id ~ "-runnables-" ~ name) %}
-                    <code>{{ name }}</code>
-                  {% endfilter %}
                   <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                 {% endif %}
               {% endfor %}
