@@ -10,6 +10,14 @@ Context:
   config (dict): The configuration options.
 -#}
 
+{% block logs scoped %}
+  {#- Logging block.
+
+  This block can be used to log debug messages, deprecation messages, warnings, etc.
+  -#}
+  {{ log.debug("Rendering OWA plugin " + plugin.namespace) }}
+{% endblock logs %}
+
 <div class="doc doc-object doc-plugin">
   {% with obj = plugin, html_id = plugin.namespace %}
 
@@ -23,185 +31,231 @@ Context:
       {% set show_full_path = config.show_object_full_path %}
     {% endif %}
 
-    {% set plugin_display_name = plugin.namespace %}
+    {% set plugin_name = plugin.namespace if show_full_path else plugin.name %}
 
-    {#- Plugin heading (simplified for testing) -#}
-    <h{{ heading_level }} id="{{ html_id }}" class="doc doc-heading">
-      <code class="doc-symbol doc-symbol-heading doc-symbol-plugin"></code>
-      <code>{{ plugin_display_name }}</code>
-      <span class="doc-label doc-label-plugin">plugin</span>
-      {% if plugin.version %}
-        <span class="doc-label doc-label-version">{{ plugin.version }}</span>
+    {% if not root or config.show_root_heading %}
+      {% filter heading(
+          heading_level,
+          role="plugin",
+          id=html_id,
+          class="doc doc-heading",
+          toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-plugin"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else plugin.name),
+        ) %}
+
+        {% block heading scoped %}
+          {#- Heading block.
+
+          This block renders the heading for the plugin.
+          -#}
+          {% if config.show_symbol_type_heading %}<code class="doc-symbol doc-symbol-heading doc-symbol-plugin"></code>{% endif %}
+          {% if config.heading and root %}
+            {{ config.heading }}
+          {% elif config.separate_signature %}
+            <span class="doc doc-object-name doc-plugin-name">{{ plugin_name }}</span>
+          {% else %}
+            <code>{{ plugin_name }}</code>
+          {% endif %}
+        {% endblock heading %}
+
+        {% block labels scoped %}
+          {#- Labels block.
+
+          This block renders the labels for the plugin.
+          -#}
+          <span class="doc-label doc-label-plugin">plugin</span>
+          {% if plugin.version %}
+            <span class="doc-label doc-label-version">{{ plugin.version }}</span>
+          {% endif %}
+        {% endblock labels %}
+
+      {% endfilter %}
+
+    {% else %}
+      {% if config.show_root_toc_entry %}
+        {% filter heading(heading_level,
+            role="plugin",
+            id=html_id,
+            toc_label=('<code class="doc-symbol doc-symbol-toc doc-symbol-plugin"></code>&nbsp;'|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else plugin.name),
+            hidden=True,
+          ) %}
+        {% endfilter %}
       {% endif %}
-    </h{{ heading_level }}>
+      {% set heading_level = heading_level - 1 %}
+    {% endif %}
 
     <div class="doc doc-contents {% if root %}first{% endif %}">
       {% block contents scoped %}
-        {#- Contents block for plugin -#}
+        {#- Contents block.
 
-        {% block plugin_info scoped %}
-          {#- Plugin info block -#}
+        This block renders the contents of the plugin.
+        It contains other blocks that users can override.
+        Overriding the contents block allows to rearrange the order of the blocks.
+        -#}
+        {% block docstring scoped %}
+          {#- Docstring block.
+
+          This block renders the description and metadata for the plugin.
+          -#}
           {% if plugin.description %}
-            <div class="doc-plugin-description">
+            <div class="doc doc-contents">
               <p>{{ plugin.description }}</p>
             </div>
           {% endif %}
 
           {% if plugin.author %}
-            <div class="doc-plugin-metadata">
+            <div class="doc doc-contents">
               <p><strong>Author:</strong> {{ plugin.author }}</p>
             </div>
           {% endif %}
-        {% endblock plugin_info %}
+        {% endblock docstring %}
 
         {% if config.backlinks %}
           <backlinks identifier="{{ html_id }}" handler="owa" />
         {% endif %}
 
-        {% block components scoped %}
-          {#- Components block - render actual Python objects -#}
+        {% block children scoped %}
+          {#- Children block.
+
+          This block renders the children (components) of the plugin.
+          -#}
           {% if plugin.components %}
+            {% set root = False %}
+            {% set heading_level = heading_level + 1 %}
 
             {#- Callables section -#}
             {% if plugin.components.get("callables") %}
-              <h{{ heading_level + 1 }} id="{{ html_id }}-callables">Callables</h{{ heading_level + 1 }}>
+              {% filter heading(heading_level, id=html_id ~ "-callables") %}
+                Callables
+              {% endfilter %}
 
-              <div class="doc-plugin-components doc-plugin-callables">
-                {% for name, import_path in plugin.components.callables.items() %}
-                  {#- Parse import path: module_path:object_name -#}
-                  {% set module_path, object_name = import_path.split(':') %}
-                  {% set full_path = module_path ~ '.' ~ object_name %}
+              {% for name, import_path in plugin.components.callables.items() %}
+                {#- Parse import path: module_path:object_name -#}
+                {% set module_path, object_name = import_path.split(':') %}
+                {% set full_path = module_path ~ '.' ~ object_name %}
 
-                  {#- Try to collect and render the actual Python object -#}
-                  {% set python_object = collect_python_object(full_path) %}
-                  {% if python_object %}
-                    {#- Render using existing Python templates with correct variable names -#}
-                    {% set root = False %}
-                    {% set heading_level = heading_level + 2 %}
-                    {% if python_object.kind.value == "function" %}
-                      {% set function = python_object %}
-                      {% include "function.html.jinja" with context %}
-                    {% elif python_object.kind.value == "class" %}
-                      {% set class = python_object %}
-                      {% include "class.html.jinja" with context %}
-                    {% elif python_object.kind.value == "module" %}
-                      {% set module = python_object %}
-                      {% include "module.html.jinja" with context %}
-                    {% elif python_object.kind.value == "attribute" %}
-                      {% set attribute = python_object %}
-                      {% include "attribute.html.jinja" with context %}
-                    {% else %}
-                      {#- Fallback for unknown types -#}
-                      <h{{ heading_level }} id="{{ html_id }}-callables-{{ name }}">
-                        <code>{{ name }}</code> ({{ python_object.kind.value }})
-                      </h{{ heading_level }}>
-                      <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
-                    {% endif %}
+                {#- Try to collect and render the actual Python object -#}
+                {% set python_object = collect_python_object(full_path) %}
+                {% if python_object %}
+                  {#- Render using existing Python templates with correct variable names -#}
+                  {% if python_object.kind.value == "function" %}
+                    {% set function = python_object %}
+                    {% include "function.html.jinja" with context %}
+                  {% elif python_object.kind.value == "class" %}
+                    {% set class = python_object %}
+                    {% include "class.html.jinja" with context %}
+                  {% elif python_object.kind.value == "module" %}
+                    {% set module = python_object %}
+                    {% include "module.html.jinja" with context %}
+                  {% elif python_object.kind.value == "attribute" %}
+                    {% set attribute = python_object %}
+                    {% include "attribute.html.jinja" with context %}
                   {% else %}
-                    {#- Fallback to simple display if object can't be collected -#}
-                    <h{{ heading_level + 2 }} id="{{ html_id }}-callables-{{ name }}">
-                      <code>{{ name }}</code>
-                    </h{{ heading_level + 2 }}>
+                    {#- Fallback for unknown types -#}
+                    {% filter heading(heading_level + 1, id=html_id ~ "-callables-" ~ name) %}
+                      <code>{{ name }}</code> ({{ python_object.kind.value }})
+                    {% endfilter %}
                     <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                   {% endif %}
-                {% endfor %}
-              </div>
+                {% else %}
+                  {#- Fallback to simple display if object can't be collected -#}
+                  {% filter heading(heading_level + 1, id=html_id ~ "-callables-" ~ name) %}
+                    <code>{{ name }}</code>
+                  {% endfilter %}
+                  <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
+                {% endif %}
+              {% endfor %}
             {% endif %}
 
             {#- Listeners section -#}
             {% if plugin.components.get("listeners") %}
-              <h{{ heading_level + 1 }} id="{{ html_id }}-listeners">Listeners</h{{ heading_level + 1 }}>
+              {% filter heading(heading_level, id=html_id ~ "-listeners") %}
+                Listeners
+              {% endfilter %}
 
-              <div class="doc-plugin-components doc-plugin-listeners">
-                {% for name, import_path in plugin.components.listeners.items() %}
-                  {#- Parse import path: module_path:object_name -#}
-                  {% set module_path, object_name = import_path.split(':') %}
-                  {% set full_path = module_path ~ '.' ~ object_name %}
+              {% for name, import_path in plugin.components.listeners.items() %}
+                {#- Parse import path: module_path:object_name -#}
+                {% set module_path, object_name = import_path.split(':') %}
+                {% set full_path = module_path ~ '.' ~ object_name %}
 
-                  {#- Try to collect and render the actual Python object -#}
-                  {% set python_object = collect_python_object(full_path) %}
-                  {% if python_object %}
-                    {#- Render using existing Python templates with correct variable names -#}
-                    {% set root = False %}
-                    {% set heading_level = heading_level + 2 %}
-                    {% if python_object.kind.value == "function" %}
-                      {% set function = python_object %}
-                      {% include "function.html.jinja" with context %}
-                    {% elif python_object.kind.value == "class" %}
-                      {% set class = python_object %}
-                      {% include "class.html.jinja" with context %}
-                    {% elif python_object.kind.value == "module" %}
-                      {% set module = python_object %}
-                      {% include "module.html.jinja" with context %}
-                    {% elif python_object.kind.value == "attribute" %}
-                      {% set attribute = python_object %}
-                      {% include "attribute.html.jinja" with context %}
-                    {% else %}
-                      {#- Fallback for unknown types -#}
-                      <h{{ heading_level }} id="{{ html_id }}-listeners-{{ name }}">
-                        <code>{{ name }}</code> ({{ python_object.kind.value }})
-                      </h{{ heading_level }}>
-                      <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
-                    {% endif %}
+                {#- Try to collect and render the actual Python object -#}
+                {% set python_object = collect_python_object(full_path) %}
+                {% if python_object %}
+                  {#- Render using existing Python templates with correct variable names -#}
+                  {% if python_object.kind.value == "function" %}
+                    {% set function = python_object %}
+                    {% include "function.html.jinja" with context %}
+                  {% elif python_object.kind.value == "class" %}
+                    {% set class = python_object %}
+                    {% include "class.html.jinja" with context %}
+                  {% elif python_object.kind.value == "module" %}
+                    {% set module = python_object %}
+                    {% include "module.html.jinja" with context %}
+                  {% elif python_object.kind.value == "attribute" %}
+                    {% set attribute = python_object %}
+                    {% include "attribute.html.jinja" with context %}
                   {% else %}
-                    {#- Fallback to simple display if object can't be collected -#}
-                    <h{{ heading_level + 2 }} id="{{ html_id }}-listeners-{{ name }}">
-                      <code>{{ name }}</code>
-                    </h{{ heading_level + 2 }}>
+                    {#- Fallback for unknown types -#}
+                    {% filter heading(heading_level + 1, id=html_id ~ "-listeners-" ~ name) %}
+                      <code>{{ name }}</code> ({{ python_object.kind.value }})
+                    {% endfilter %}
                     <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                   {% endif %}
-                {% endfor %}
-              </div>
+                {% else %}
+                  {#- Fallback to simple display if object can't be collected -#}
+                  {% filter heading(heading_level + 1, id=html_id ~ "-listeners-" ~ name) %}
+                    <code>{{ name }}</code>
+                  {% endfilter %}
+                  <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
+                {% endif %}
+              {% endfor %}
             {% endif %}
 
             {#- Runnables section -#}
             {% if plugin.components.get("runnables") %}
-              <h{{ heading_level + 1 }} id="{{ html_id }}-runnables">Runnables</h{{ heading_level + 1 }}>
+              {% filter heading(heading_level, id=html_id ~ "-runnables") %}
+                Runnables
+              {% endfilter %}
 
-              <div class="doc-plugin-components doc-plugin-runnables">
-                {% for name, import_path in plugin.components.runnables.items() %}
-                  {#- Parse import path: module_path:object_name -#}
-                  {% set module_path, object_name = import_path.split(':') %}
-                  {% set full_path = module_path ~ '.' ~ object_name %}
+              {% for name, import_path in plugin.components.runnables.items() %}
+                {#- Parse import path: module_path:object_name -#}
+                {% set module_path, object_name = import_path.split(':') %}
+                {% set full_path = module_path ~ '.' ~ object_name %}
 
-                  {#- Try to collect and render the actual Python object -#}
-                  {% set python_object = collect_python_object(full_path) %}
-                  {% if python_object %}
-                    {#- Render using existing Python templates with correct variable names -#}
-                    {% set root = False %}
-                    {% set heading_level = heading_level + 2 %}
-                    {% if python_object.kind.value == "function" %}
-                      {% set function = python_object %}
-                      {% include "function.html.jinja" with context %}
-                    {% elif python_object.kind.value == "class" %}
-                      {% set class = python_object %}
-                      {% include "class.html.jinja" with context %}
-                    {% elif python_object.kind.value == "module" %}
-                      {% set module = python_object %}
-                      {% include "module.html.jinja" with context %}
-                    {% elif python_object.kind.value == "attribute" %}
-                      {% set attribute = python_object %}
-                      {% include "attribute.html.jinja" with context %}
-                    {% else %}
-                      {#- Fallback for unknown types -#}
-                      <h{{ heading_level }} id="{{ html_id }}-runnables-{{ name }}">
-                        <code>{{ name }}</code> ({{ python_object.kind.value }})
-                      </h{{ heading_level }}>
-                      <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
-                    {% endif %}
+                {#- Try to collect and render the actual Python object -#}
+                {% set python_object = collect_python_object(full_path) %}
+                {% if python_object %}
+                  {#- Render using existing Python templates with correct variable names -#}
+                  {% if python_object.kind.value == "function" %}
+                    {% set function = python_object %}
+                    {% include "function.html.jinja" with context %}
+                  {% elif python_object.kind.value == "class" %}
+                    {% set class = python_object %}
+                    {% include "class.html.jinja" with context %}
+                  {% elif python_object.kind.value == "module" %}
+                    {% set module = python_object %}
+                    {% include "module.html.jinja" with context %}
+                  {% elif python_object.kind.value == "attribute" %}
+                    {% set attribute = python_object %}
+                    {% include "attribute.html.jinja" with context %}
                   {% else %}
-                    {#- Fallback to simple display if object can't be collected -#}
-                    <h{{ heading_level + 2 }} id="{{ html_id }}-runnables-{{ name }}">
-                      <code>{{ name }}</code>
-                    </h{{ heading_level + 2 }}>
+                    {#- Fallback for unknown types -#}
+                    {% filter heading(heading_level + 1, id=html_id ~ "-runnables-" ~ name) %}
+                      <code>{{ name }}</code> ({{ python_object.kind.value }})
+                    {% endfilter %}
                     <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
                   {% endif %}
-                {% endfor %}
-              </div>
+                {% else %}
+                  {#- Fallback to simple display if object can't be collected -#}
+                  {% filter heading(heading_level + 1, id=html_id ~ "-runnables-" ~ name) %}
+                    <code>{{ name }}</code>
+                  {% endfilter %}
+                  <p><strong>Import path:</strong> <code>{{ import_path }}</code></p>
+                {% endif %}
+              {% endfor %}
             {% endif %}
 
           {% endif %}
-        {% endblock components %}
+        {% endblock children %}
       {% endblock contents %}
     </div>
 
